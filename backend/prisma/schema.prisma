@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  firebaseUid   String   @unique
+  email         String   @unique
+  displayName   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  organizedEvents Event[]           @relation("Organizer")
+  attendances     EventAttendance[]
+  reviews         Review[]
+  
+  @@map("users")
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  date        DateTime
+  location    String
+  organizerId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  organizer   User              @relation("Organizer", fields: [organizerId], references: [id])
+  attendances EventAttendance[]
+  reviews     Review[]
+  
+  @@map("events")
+}
+
+model EventAttendance {
+  id        String   @id @default(uuid())
+  userId    String
+  eventId   String
+  status    String   @default("confirmed")
+  createdAt DateTime @default(now())
+  
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+  
+  @@unique([userId, eventId])
+  @@map("event_attendances")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  eventId   String
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+  
+  @@unique([userId, eventId])
+  @@map("reviews")
+}
