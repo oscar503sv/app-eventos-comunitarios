@@ -1,0 +1,56 @@
+# ============================================================
+# Backend - Node.js / TypeScript
+# ============================================================
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/*.env.local
+backend/*.env.*.local
+
+# ============================================================
+# Backend - Prisma
+# ============================================================
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# ============================================================
+# Android - Gradle
+# ============================================================
+eventos-comunitarios-app/.gradle/
+eventos-comunitarios-app/build/
+eventos-comunitarios-app/app/build/
+eventos-comunitarios-app/local.properties
+eventos-comunitarios-app/captures/
+eventos-comunitarios-app/.externalNativeBuild/
+eventos-comunitarios-app/.cxx/
+
+# ============================================================
+# Android - IntelliJ / Android Studio
+# ============================================================
+eventos-comunitarios-app/.idea/caches/
+eventos-comunitarios-app/.idea/libraries/
+eventos-comunitarios-app/.idea/modules.xml
+eventos-comunitarios-app/.idea/workspace.xml
+eventos-comunitarios-app/.idea/navEditor.xml
+eventos-comunitarios-app/.idea/assetWizardSettings.xml
+eventos-comunitarios-app/*.iml
+eventos-comunitarios-app/.kotlin/
+
+# ============================================================
+# Android - Secretos y configuración local
+# ============================================================
+eventos-comunitarios-app/app/google-services.json
+
+# ============================================================
+# Sistema operativo
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# Editores
+# ============================================================
+.vscode/
+*.swp
+*.swo
