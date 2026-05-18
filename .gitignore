@@ -3,9 +3,14 @@
 # ============================================================
 backend/node_modules/
 backend/dist/
+backend/coverage/
 backend/.env
 backend/*.env.local
 backend/*.env.*.local
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/*.log
 
 # ============================================================
 # Backend - Prisma
@@ -16,30 +21,38 @@ backend/prisma/*.db-journal
 # ============================================================
 # Android - Gradle
 # ============================================================
-eventos-comunitarios-app/.gradle/
-eventos-comunitarios-app/build/
-eventos-comunitarios-app/app/build/
-eventos-comunitarios-app/local.properties
-eventos-comunitarios-app/captures/
-eventos-comunitarios-app/.externalNativeBuild/
-eventos-comunitarios-app/.cxx/
+app-mobile/.gradle/
+app-mobile/build/
+app-mobile/app/build/
+app-mobile/local.properties
+app-mobile/captures/
+app-mobile/.externalNativeBuild/
+app-mobile/.cxx/
 
 # ============================================================
 # Android - IntelliJ / Android Studio
 # ============================================================
-eventos-comunitarios-app/.idea/caches/
-eventos-comunitarios-app/.idea/libraries/
-eventos-comunitarios-app/.idea/modules.xml
-eventos-comunitarios-app/.idea/workspace.xml
-eventos-comunitarios-app/.idea/navEditor.xml
-eventos-comunitarios-app/.idea/assetWizardSettings.xml
-eventos-comunitarios-app/*.iml
-eventos-comunitarios-app/.kotlin/
+app-mobile/.idea/
+app-mobile/*.iml
+app-mobile/.kotlin/
 
 # ============================================================
-# Android - Secretos y configuración local
+# Android - Outputs / APKs
 # ============================================================
-eventos-comunitarios-app/app/google-services.json
+app-mobile/app/release/
+app-mobile/app/debug/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ============================================================
+# Android - Firmas y secretos
+# ============================================================
+app-mobile/app/google-services.json
+*.jks
+*.keystore
+keystore.properties
 
 # ============================================================
 # Sistema operativo
@@ -52,5 +65,7 @@ desktop.ini
 # Editores
 # ============================================================
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
