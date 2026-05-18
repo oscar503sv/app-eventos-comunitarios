@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import eventRouter from "./routes/event.route.js";
 import reviewRouter from "./routes/review.route.js";
+import healthRouter from "./routes/health.route.js";
 import { swaggerSpec } from "./config/swagger.js";
 
 dotenv.config();
@@ -21,13 +22,10 @@ app.get('/api-docs.json', (_req: Request, res: Response) => { res.json(swaggerSp
 // Routes
 app.use('/api/events', eventRouter);
 app.use('/api/reviews', reviewRouter);
+app.use('/health', healthRouter);
 
 app.get("/", (req: Request, res: Response) => {
   res.json({ message: "API con TypeScript funcionando 🚀" });
-});
-
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok' });
 });
 
 app.listen(PORT, () => {

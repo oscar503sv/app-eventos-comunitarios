@@ -29,6 +29,7 @@ const options: swaggerJsdoc.Options = {
     tags: [
       { name: 'Events', description: 'Creación, consulta, actualización y asistencia a eventos' },
       { name: 'Reviews', description: 'Reseñas y calificaciones de eventos' },
+      { name: 'Health', description: 'Estado del servicio y dependencias' },
     ],
     components: {
       securitySchemes: {
