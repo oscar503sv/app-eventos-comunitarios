@@ -12,6 +12,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -26,14 +27,16 @@ import com.eventos.comunitarios.ui.auth.AuthState
 import com.eventos.comunitarios.ui.auth.AuthViewModel
 import com.eventos.comunitarios.ui.auth.LoginScreen
 import com.eventos.comunitarios.ui.auth.RegisterScreen
+import com.eventos.comunitarios.ui.events.EventsScreen
+import com.eventos.comunitarios.ui.events.EventsViewModel
 import com.eventos.comunitarios.ui.theme.AppEventosComunitariosTheme
-import androidx.compose.ui.tooling.preview.Preview
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
+    private val eventsViewModel: EventsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +45,7 @@ class MainActivity : ComponentActivity() {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
-            .requestProfile() // Asegura que se pida el perfil para el displayName
+            .requestProfile()
             .build()
         val googleSignInClient = GoogleSignIn.getClient(this, gso)
 
@@ -51,6 +54,7 @@ class MainActivity : ComponentActivity() {
             AppEventosComunitariosTheme {
                 val navController = rememberNavController()
                 val authState by authViewModel.authState.collectAsState()
+                val eventsState by eventsViewModel.state.collectAsState()
 
                 val googleSignInLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartActivityForResult()
@@ -78,7 +82,7 @@ class MainActivity : ComponentActivity() {
                                 onEmailLogin = { email, pass -> authViewModel.signInWithEmail(email, pass) },
                                 onGoogleLogin = { googleSignInLauncher.launch(googleSignInClient.signInIntent) },
                                 onNavigateToRegister = { navController.navigate("register") },
-                                onLoginSuccess = { navController.navigate("home") }
+                                onLoginSuccess = { navController.navigate("events") }
                             )
                         }
                         composable("register") {
@@ -86,18 +90,21 @@ class MainActivity : ComponentActivity() {
                                 authState = authState,
                                 onRegister = { email, pass, name -> authViewModel.signUpWithEmail(email, pass, name) },
                                 onNavigateToLogin = { navController.popBackStack() },
-                                onRegisterSuccess = { navController.navigate("home") }
+                                onRegisterSuccess = { navController.navigate("events") }
                             )
                         }
-                        composable("home") {
-                            val user = (authState as? AuthState.Success)?.user
-                            HomeScreen(
-                                displayName = user?.displayName ?: user?.email ?: "Usuario",
+                        composable("events") {
+                            LaunchedEffect(Unit) {
+                                eventsViewModel.loadEvents()
+                            }
+                            EventsScreen(
+                                state = eventsState,
+                                onRefresh = { eventsViewModel.loadEvents() },
                                 onLogout = {
                                     authViewModel.signOut()
                                     googleSignInClient.signOut()
                                     navController.navigate("login") {
-                                        popUpTo("home") { inclusive = true }
+                                        popUpTo("events") { inclusive = true }
                                     }
                                 }
                             )
@@ -105,35 +112,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    AppEventosComunitariosTheme {
-        HomeScreen(displayName = "Juan Pérez", onLogout = {})
-    }
-}
-
-@Composable
-fun HomeScreen(displayName: String, onLogout: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = "¡Bienvenido,", fontSize = 24.sp)
-        Text(text = displayName, fontSize = 28.sp, color = MaterialTheme.colorScheme.primary)
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Button(
-            onClick = onLogout,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-        ) {
-            Text(text = "Cerrar Sesión", color = Color.White)
         }
     }
 }

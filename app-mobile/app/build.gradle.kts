@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -12,6 +14,13 @@ android {
         }
     }
 
+    val properties = Properties().apply {
+        val propertiesFile = rootProject.file("local.properties")
+        if (propertiesFile.exists()) {
+            load(propertiesFile.inputStream())
+        }
+    }
+
     defaultConfig {
         applicationId = "com.eventos.comunitarios"
         minSdk = 24
@@ -20,6 +29,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val apiBaseUrl = properties.getProperty("API_BASE_URL") ?: "http://10.0.2.2:3000/"
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildTypes {
@@ -37,10 +49,16 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
 dependencies {
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.moshi)
+    implementation(libs.moshi)
+    implementation(libs.okhttp.logging)
+
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
@@ -53,6 +71,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
