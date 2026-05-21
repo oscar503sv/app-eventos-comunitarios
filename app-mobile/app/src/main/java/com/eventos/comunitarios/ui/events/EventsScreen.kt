@@ -11,10 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import com.eventos.comunitarios.R
 import com.eventos.comunitarios.data.model.EventCounts
 import com.eventos.comunitarios.data.model.EventSummary
 import com.eventos.comunitarios.data.model.UserPublic
@@ -30,13 +32,13 @@ fun EventsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Eventos Comunitarios") },
+                title = { Text(stringResource(R.string.events_title)) },
                 actions = {
                     IconButton(onClick = onRefresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Recargar")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.events_reload))
                     }
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar Sesión", tint = Color.Red)
+                        Icon(Icons.Default.ExitToApp, contentDescription = stringResource(R.string.events_logout), tint = Color.Red)
                     }
                 }
             )
@@ -54,14 +56,14 @@ fun EventsScreen(
                     ) {
                         Text(text = state.message, color = Color.Red, modifier = Modifier.padding(16.dp))
                         Button(onClick = onRefresh) {
-                            Text("Reintentar")
+                            Text(stringResource(R.string.events_retry))
                         }
                     }
                 }
                 is EventsState.Success -> {
                     if (state.events.isEmpty()) {
                         Text(
-                            text = "No hay eventos disponibles",
+                            text = stringResource(R.string.events_empty),
                             modifier = Modifier.align(Alignment.Center)
                         )
                     } else {
@@ -96,19 +98,22 @@ fun EventCard(event: EventSummary) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = event.location, fontSize = 14.sp, color = Color.Gray)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = event.description ?: "Sin descripción", maxLines = 2)
+            Text(text = event.description ?: stringResource(R.string.events_no_description), maxLines = 2)
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Por: ${event.organizer.displayName ?: "Anónimo"}",
+                    text = stringResource(
+                        R.string.events_organizer,
+                        event.organizer.displayName ?: stringResource(R.string.events_anonymous)
+                    ),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${event.count.attendances} Asistentes",
+                    text = stringResource(R.string.events_attendees, event.count.attendances),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.secondary
                 )

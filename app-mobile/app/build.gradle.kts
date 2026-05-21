@@ -32,6 +32,10 @@ android {
 
         val apiBaseUrl = properties.getProperty("API_BASE_URL") ?: "http://10.0.2.2:3000/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+
+        resValue("string", "facebook_app_id", properties.getProperty("FACEBOOK_APP_ID") ?: "")
+        resValue("string", "fb_login_protocol_scheme", properties.getProperty("FB_LOGIN_PROTOCOL_SCHEME") ?: "")
+        resValue("string", "facebook_client_token", properties.getProperty("FACEBOOK_CLIENT_TOKEN") ?: "")
     }
 
     buildTypes {
@@ -50,6 +54,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 }
 
@@ -62,6 +67,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
+    implementation(libs.facebook.login)
     implementation(libs.androidx.navigation.compose)
 
     implementation(platform(libs.androidx.compose.bom))
