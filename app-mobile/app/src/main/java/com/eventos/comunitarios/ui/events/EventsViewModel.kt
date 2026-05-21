@@ -1,7 +1,9 @@
 package com.eventos.comunitarios.ui.events
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.eventos.comunitarios.R
 import com.eventos.comunitarios.data.model.EventSummary
 import com.eventos.comunitarios.data.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +16,7 @@ sealed class EventsState {
     data class Error(val message: String) : EventsState()
 }
 
-class EventsViewModel : ViewModel() {
+class EventsViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableStateFlow<EventsState>(EventsState.Loading)
     val state = _state.asStateFlow()
 
@@ -26,10 +28,10 @@ class EventsViewModel : ViewModel() {
                 if (response.success) {
                     _state.value = EventsState.Success(response.events)
                 } else {
-                    _state.value = EventsState.Error("Error al cargar eventos")
+                    _state.value = EventsState.Error(getApplication<Application>().getString(R.string.error_load_events))
                 }
             } catch (e: Exception) {
-                _state.value = EventsState.Error(e.message ?: "Error desconocido")
+                _state.value = EventsState.Error(e.message ?: getApplication<Application>().getString(R.string.error_unknown))
             }
         }
     }

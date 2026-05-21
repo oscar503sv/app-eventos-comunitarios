@@ -1,7 +1,10 @@
 package com.eventos.comunitarios.ui.auth
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.eventos.comunitarios.R
+import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -23,19 +26,21 @@ interface IAuthViewModel {
     fun signInWithEmail(email: String, pass: String)
     fun signUpWithEmail(email: String, pass: String, fullName: String)
     fun signInWithGoogle(idToken: String)
+    fun signInWithFacebook(accessToken: String)
     fun signOut()
     fun resetState()
 }
 
-class AuthViewModel : ViewModel(), IAuthViewModel {
+class AuthViewModel(application: Application) : AndroidViewModel(application), IAuthViewModel {
     private val auth by lazy { FirebaseAuth.getInstance() }
+    private fun str(id: Int) = getApplication<Application>().getString(id)
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     override val authState = _authState.asStateFlow()
 
     override fun signInWithEmail(email: String, pass: String) {
         if (email.isBlank() || pass.isBlank()) {
-            _authState.value = AuthState.Error("Email and password cannot be empty")
+            _authState.value = AuthState.Error(str(R.string.error_email_password_empty))
             return
         }
         viewModelScope.launch {
@@ -45,7 +50,7 @@ class AuthViewModel : ViewModel(), IAuthViewModel {
                     if (task.isSuccessful) {
                         _authState.value = AuthState.Success(auth.currentUser)
                     } else {
-                        _authState.value = AuthState.Error(task.exception?.message ?: "Login failed")
+                        _authState.value = AuthState.Error(task.exception?.message ?: str(R.string.error_login_failed))
                     }
                 }
         }
@@ -53,7 +58,7 @@ class AuthViewModel : ViewModel(), IAuthViewModel {
 
     override fun signUpWithEmail(email: String, pass: String, fullName: String) {
         if (email.isBlank() || pass.isBlank() || fullName.isBlank()) {
-            _authState.value = AuthState.Error("All fields are required")
+            _authState.value = AuthState.Error(str(R.string.error_fields_required))
             return
         }
         viewModelScope.launch {
@@ -65,18 +70,17 @@ class AuthViewModel : ViewModel(), IAuthViewModel {
                         val profileUpdates = UserProfileChangeRequest.Builder()
                             .setDisplayName(fullName)
                             .build()
-                        
+
                         user?.updateProfile(profileUpdates)
                             ?.addOnCompleteListener { profileTask ->
                                 if (profileTask.isSuccessful) {
                                     _authState.value = AuthState.Success(auth.currentUser)
                                 } else {
-                                    // Aunque falle el perfil, el usuario se creó, pero notificamos error
-                                    _authState.value = AuthState.Error(profileTask.exception?.message ?: "Failed to set display name")
+                                    _authState.value = AuthState.Error(profileTask.exception?.message ?: str(R.string.error_display_name_failed))
                                 }
                             }
                     } else {
-                        _authState.value = AuthState.Error(task.exception?.message ?: "Registration failed")
+                        _authState.value = AuthState.Error(task.exception?.message ?: str(R.string.error_registration_failed))
                     }
                 }
         }
@@ -91,7 +95,22 @@ class AuthViewModel : ViewModel(), IAuthViewModel {
                     if (task.isSuccessful) {
                         _authState.value = AuthState.Success(auth.currentUser)
                     } else {
-                        _authState.value = AuthState.Error(task.exception?.message ?: "Google Sign-In failed")
+                        _authState.value = AuthState.Error(task.exception?.message ?: str(R.string.error_google_signin_failed))
+                    }
+                }
+        }
+    }
+
+    override fun signInWithFacebook(accessToken: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val credential = FacebookAuthProvider.getCredential(accessToken)
+            auth.signInWithCredential(credential)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        _authState.value = AuthState.Success(auth.currentUser)
+                    } else {
+                        _authState.value = AuthState.Error(task.exception?.message ?: str(R.string.error_facebook_signin_failed))
                     }
                 }
         }

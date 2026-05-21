@@ -1,3 +1,75 @@
 <resources>
     <string name="app_name">AppEventosComunitarios</string>
+
+    <!-- Brand -->
+    <string name="app_brand_name">EventApp</string>
+
+    <!-- Shared -->
+    <string name="nav_back">Volver</string>
+    <string name="field_email">Email</string>
+    <string name="field_password">Contraseña</string>
+
+    <!-- Splash -->
+    <string name="splash_tagline">Vive cada momento</string>
+    <string name="splash_label">EVENTOS COMUNITARIOS</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">Vive cada momento.\nDescubre lo que pasa en tu barrio.</string>
+    <string name="onboarding_begin">Comenzar</string>
+    <string name="onboarding_have_account">Ya tengo cuenta</string>
+    <string name="onboarding_category_gastro">GASTRO</string>
+    <string name="onboarding_event_market">Mercado de\nproductores</string>
+    <string name="onboarding_category_talleres">TALLERES</string>
+    <string name="onboarding_event_ceramica">Cerámica para\ntodos</string>
+    <string name="onboarding_badge_featured">DESTACADO</string>
+    <string name="onboarding_category_fiesta">FIESTA</string>
+    <string name="onboarding_price_free"> · GRATIS</string>
+    <string name="onboarding_event_verbena">Verbena de\nPrimavera</string>
+    <string name="onboarding_event_attendees_demo">142 asistirán · 0.5 km</string>
+
+    <!-- Login -->
+    <string name="login_title">Iniciar sesión</string>
+    <string name="login_subtitle">Te damos la bienvenida de vuelta a la comunidad.</string>
+    <string name="login_button">Ingresar</string>
+    <string name="login_or_continue">o continúa con</string>
+    <string name="login_google">Continuar con Google</string>
+    <string name="login_facebook">Continuar con Facebook</string>
+    <string name="login_no_account">¿No tienes cuenta?</string>
+    <string name="login_register">Regístrate</string>
+
+    <!-- Register -->
+    <string name="register_title">Crear cuenta</string>
+    <string name="register_subtitle">Únete a tu comunidad en un minuto.</string>
+    <string name="register_full_name">Nombre completo</string>
+    <string name="register_confirm_password">Confirmar contraseña</string>
+    <string name="register_password_strength">Fortaleza de la contraseña</string>
+    <string name="register_passwords_match">✓ Coinciden</string>
+    <string name="register_passwords_no_match">✗ Las contraseñas no coinciden</string>
+    <string name="register_terms_prefix">Acepto los</string>
+    <string name="register_terms_link">términos y condiciones</string>
+    <string name="register_privacy_mid">y la</string>
+    <string name="register_privacy_link">política de privacidad</string>
+    <string name="register_button">Crear cuenta</string>
+
+    <!-- Events -->
+    <string name="events_title">Eventos Comunitarios</string>
+    <string name="events_reload">Recargar</string>
+    <string name="events_logout">Cerrar Sesión</string>
+    <string name="events_retry">Reintentar</string>
+    <string name="events_empty">No hay eventos disponibles</string>
+    <string name="events_no_description">Sin descripción</string>
+    <string name="events_anonymous">Anónimo</string>
+    <string name="events_organizer">Por: %1$s</string>
+    <string name="events_attendees">%1$d Asistentes</string>
+
+    <!-- Errors -->
+    <string name="error_email_password_empty">El email y la contraseña no pueden estar vacíos</string>
+    <string name="error_login_failed">Error al iniciar sesión</string>
+    <string name="error_fields_required">Todos los campos son requeridos</string>
+    <string name="error_display_name_failed">Error al guardar el nombre</string>
+    <string name="error_registration_failed">Error al registrarse</string>
+    <string name="error_google_signin_failed">Error al iniciar sesión con Google</string>
+    <string name="error_facebook_signin_failed">Error al iniciar sesión con Facebook</string>
+    <string name="error_load_events">Error al cargar eventos</string>
+    <string name="error_unknown">Error desconocido</string>
 </resources>

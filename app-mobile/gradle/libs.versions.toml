@@ -15,6 +15,7 @@ firebaseBom = "34.13.0"
 googleServices = "4.4.4"
 playServicesAuth = "21.5.1"
 navigationCompose = "2.9.8"
+facebookSdk = "17.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -40,6 +41,7 @@ retrofit-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", v
 moshi = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+facebook-login = { group = "com.facebook.android", name = "facebook-login", version.ref = "facebookSdk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
