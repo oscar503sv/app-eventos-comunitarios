@@ -33,9 +33,21 @@ android {
         val apiBaseUrl = properties.getProperty("API_BASE_URL") ?: "http://10.0.2.2:3000/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 
-        resValue("string", "facebook_app_id", properties.getProperty("FACEBOOK_APP_ID") ?: "")
-        resValue("string", "fb_login_protocol_scheme", properties.getProperty("FB_LOGIN_PROTOCOL_SCHEME") ?: "")
-        resValue("string", "facebook_client_token", properties.getProperty("FACEBOOK_CLIENT_TOKEN") ?: "")
+        resValue(
+            "string",
+            "facebook_app_id",
+            properties.getProperty("FACEBOOK_APP_ID") ?: ""
+        )
+        resValue(
+            "string",
+            "fb_login_protocol_scheme",
+            properties.getProperty("FB_LOGIN_PROTOCOL_SCHEME") ?: ""
+        )
+        resValue(
+            "string",
+            "facebook_client_token",
+            properties.getProperty("FACEBOOK_CLIENT_TOKEN") ?: ""
+        )
     }
 
     buildTypes {
@@ -47,10 +59,12 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -66,6 +80,8 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.messaging)
+
     implementation(libs.play.services.auth)
     implementation(libs.facebook.login)
     implementation(libs.androidx.navigation.compose)
@@ -79,11 +95,14 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
     testImplementation(libs.junit)
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
