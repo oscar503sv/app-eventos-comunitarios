@@ -1,11 +1,48 @@
 import { Request, Response } from 'express';
+import { EventCategory } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
+
+const ALLOWED_CATEGORIES = Object.values(EventCategory);
+
+const parseCategory = (value: unknown): EventCategory | { error: string } | null => {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || !ALLOWED_CATEGORIES.includes(value as EventCategory)) {
+    return { error: `Categoría inválida. Valores permitidos: ${ALLOWED_CATEGORIES.join(', ')}` };
+  }
+  return value as EventCategory;
+};
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 50;
+
+const parsePagination = (
+  rawPage: unknown,
+  rawLimit: unknown,
+): { page: number; limit: number } | { error: string } => {
+  const page = rawPage === undefined ? DEFAULT_PAGE : Number(rawPage);
+  const limit = rawLimit === undefined ? DEFAULT_LIMIT : Number(rawLimit);
+
+  if (!Number.isInteger(page) || page < 1) {
+    return { error: '"page" debe ser un entero mayor o igual a 1' };
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
+    return { error: `"limit" debe ser un entero entre 1 y ${MAX_LIMIT}` };
+  }
+  return { page, limit };
+};
 
 // Crear evento
 export const createEvent = async (req: Request, res: Response) => {
   try {
-    const { title, description, date, location } = req.body;
+    const { title, description, date, location, category } = req.body;
     const user = req.dbUser!;
+
+    const parsed = parseCategory(category);
+    if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
 
     const event = await prisma.event.create({
       data: {
@@ -13,6 +50,7 @@ export const createEvent = async (req: Request, res: Response) => {
         description: description ?? null,
         date: new Date(date),
         location,
+        category: parsed ?? EventCategory.OTRO,
         organizerId: user.id,
       },
     });
@@ -24,18 +62,37 @@ export const createEvent = async (req: Request, res: Response) => {
   }
 };
 
-// Obtener todos los eventos
+// Obtener todos los eventos (paginado)
 export const getEvents = async (req: Request, res: Response) => {
   try {
-    const events = await prisma.event.findMany({
-      include: {
-        organizer: { select: { id: true, displayName: true, email: true } },
-        _count: { select: { attendances: true, reviews: true } },
-      },
-      orderBy: { date: 'asc' },
-    });
+    const pagination = parsePagination(req.query.page, req.query.limit);
+    if ('error' in pagination) {
+      res.status(400).json({ error: pagination.error });
+      return;
+    }
+    const { page, limit } = pagination;
 
-    res.json({ success: true, events });
+    const [events, total] = await prisma.$transaction([
+      prisma.event.findMany({
+        include: {
+          organizer: { select: { id: true, displayName: true, email: true } },
+          _count: { select: { attendances: true, reviews: true } },
+        },
+        orderBy: { date: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.event.count(),
+    ]);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+    const hasMore = page < totalPages;
+
+    res.json({
+      success: true,
+      events,
+      pagination: { page, limit, total, totalPages, hasMore },
+    });
   } catch (error) {
     console.error('Error getting events:', error);
     res.status(500).json({ error: 'Error al obtener eventos' });
@@ -151,7 +208,7 @@ export const getUserEvents = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, date, location } = req.body;
+    const { title, description, date, location, category } = req.body;
     const user = req.dbUser!;
 
     if (!id) {
@@ -170,6 +227,12 @@ export const updateEvent = async (req: Request, res: Response) => {
       return;
     }
 
+    const parsed = parseCategory(category);
+    if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
@@ -177,6 +240,7 @@ export const updateEvent = async (req: Request, res: Response) => {
         description: description ?? null,
         date: new Date(date),
         location,
+        ...(parsed ? { category: parsed } : {}),
       },
     });
 
@@ -184,5 +248,36 @@ export const updateEvent = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error updating event:', error);
     res.status(500).json({ error: 'Error al actualizar evento' });
+  }
+};
+
+// Eliminar evento (solo el organizador puede hacerlo)
+export const deleteEvent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = req.dbUser!;
+
+    if (!id) {
+      res.status(400).json({ error: 'ID de evento requerido' });
+      return;
+    }
+
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) {
+      res.status(404).json({ error: 'Evento no encontrado' });
+      return;
+    }
+
+    if (event.organizerId !== user.id) {
+      res.status(403).json({ error: 'Solo el organizador puede eliminar el evento' });
+      return;
+    }
+
+    await prisma.event.delete({ where: { id } });
+
+    res.json({ success: true, message: 'Evento eliminado' });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ error: 'Error al eliminar evento' });
   }
 };

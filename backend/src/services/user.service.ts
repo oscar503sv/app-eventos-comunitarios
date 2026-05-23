@@ -8,14 +8,18 @@ interface FirebaseUserData {
 }
 
 export const resolveOrCreateUser = async ({ uid, email, displayName }: FirebaseUserData): Promise<User> => {
-  let dbUser = await prisma.user.findUnique({ where: { firebaseUid: uid } });
+  const dbUser = await prisma.user.findUnique({ where: { firebaseUid: uid } });
 
   if (dbUser) {
+    // displayName es editable por el usuario vía PUT /api/users/profile, así que la BD es
+    // la fuente de verdad: solo se inicializa desde el token si la BD aún no tiene valor.
+    // Sin esto, el token de Firebase (que cachea claims por ~1h) revertiría los cambios
+    // de displayName en cada request hasta que el token caducara.
     return prisma.user.update({
       where: { firebaseUid: uid },
       data: {
         email: email || dbUser.email,
-        displayName: displayName ?? dbUser.displayName,
+        displayName: dbUser.displayName ?? displayName ?? null,
       },
     });
   }
@@ -27,7 +31,7 @@ export const resolveOrCreateUser = async ({ uid, email, displayName }: FirebaseU
       where: { email: email || '' },
       data: {
         firebaseUid: uid,
-        displayName: displayName ?? existingByEmail.displayName,
+        displayName: existingByEmail.displayName ?? displayName ?? null,
       },
     });
   }
