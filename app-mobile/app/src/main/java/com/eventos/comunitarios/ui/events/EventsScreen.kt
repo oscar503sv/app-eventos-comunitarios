@@ -67,6 +67,7 @@ fun EventsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets.statusBars, // Forzar uso solo de barra de estado
                 title = {
                     Column {
                         Text(

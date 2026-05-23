@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.eventos.comunitarios.ui.events.*
 import com.eventos.comunitarios.ui.profile.ProfileScreen
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Alignment
 
@@ -41,6 +42,7 @@ fun MainScreen(
     )
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0), // Deshabilitar insets automáticos del Scaffold
         bottomBar = {
             NavigationBar {
                 items.forEach { item ->

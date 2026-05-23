@@ -75,6 +75,7 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color(0xFFFBF8FF))
+                    .statusBarsPadding()
                     .verticalScroll(rememberScrollState())
             ) {
                 // Header Card con Gradiente

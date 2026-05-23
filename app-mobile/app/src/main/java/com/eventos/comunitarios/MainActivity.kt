@@ -55,8 +55,10 @@ class MainActivity : ComponentActivity() {
         try {
             val info = packageManager.getPackageInfo(
                 packageName,
+                @Suppress("DEPRECATION")
                 PackageManager.GET_SIGNATURES
             )
+            @Suppress("DEPRECATION")
             for (signature in info.signatures!!) {
                 val md = MessageDigest.getInstance("SHA")
                 md.update(signature.toByteArray())
@@ -114,151 +116,149 @@ class MainActivity : ComponentActivity() {
                     LoginManager.getInstance().createLogInActivityResultContract(callbackManager, null)
                 ) { /* resultado procesado por callbackManager */ }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    NavHost(
-                        navController = navController,
-                        startDestination = "splash",
-                        modifier = Modifier.padding(innerPadding)
-                    ) {
-                        composable("splash") {
-                            SplashScreen(
-                                onSplashComplete = {
-                                    val destination = when {
-                                        FirebaseAuth.getInstance().currentUser != null -> "events"
-                                        prefs.getBoolean("onboarding_seen", false) -> "login"
-                                        else -> "onboarding"
-                                    }
-                                    navController.navigate(destination) {
-                                        popUpTo("splash") { inclusive = true }
-                                    }
+                NavHost(
+                    navController = navController,
+                    startDestination = "splash",
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable("splash") {
+                        SplashScreen(
+                            onSplashComplete = {
+                                val destination = when {
+                                    FirebaseAuth.getInstance().currentUser != null -> "events"
+                                    prefs.getBoolean("onboarding_seen", false) -> "login"
+                                    else -> "onboarding"
                                 }
-                            )
-                        }
-                        composable("onboarding") {
-                            OnboardingScreen(
-                                onBegin = {
-                                    prefs.edit().putBoolean("onboarding_seen", true).apply()
-                                    navController.navigate("register") {
-                                        popUpTo("onboarding") { inclusive = true }
-                                    }
-                                },
-                                onAlreadyHaveAccount = {
-                                    prefs.edit().putBoolean("onboarding_seen", true).apply()
-                                    navController.navigate("login") {
-                                        popUpTo("onboarding") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                        composable("login") {
-                            LoginScreen(
-                                authState = authState,
-                                onEmailLogin = { email, pass ->
-                                    authViewModel.signInWithEmail(email, pass)
-                                },
-                                onGoogleLogin = {
-                                    googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                                },
-                                onFacebookLogin = {
-                                    facebookLoginLauncher.launch(listOf("email", "public_profile"))
-                                },
-                                onNavigateToRegister = { navController.navigate("register") },
-                                onNavigateBack = { navController.popBackStack() },
-                                onLoginSuccess = {
-                                    navController.navigate("events") {
-                                        popUpTo("onboarding") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                        composable("register") {
-                            RegisterScreen(
-                                authState = authState,
-                                onRegister = { email, pass, name ->
-                                    authViewModel.signUpWithEmail(email, pass, name)
-                                },
-                                onNavigateToLogin = { navController.navigate("login") },
-                                onRegisterSuccess = {
-                                    navController.navigate("events") {
-                                        popUpTo("onboarding") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                        composable("events") {
-                            LaunchedEffect(Unit) { eventsViewModel.loadEvents() }
-                            MainScreen(
-                                eventsViewModel = eventsViewModel,
-                                myEventsViewModel = myEventsViewModel,
-                                profileViewModel = profileViewModel,
-                                onEventClick = { id ->
-                                    detailViewModel.loadEvent(id)
-                                    navController.navigate("event_detail")
-                                },
-                                onCreateEvent = {
-                                    formViewModel.resetForm()
-                                    navController.navigate("event_form")
-                                },
-                                onLogout = {
-                                    authViewModel.signOut()
-                                    googleSignInClient.signOut()
-                                    LoginManager.getInstance().logOut()
-                                    navController.navigate("onboarding") {
-                                        popUpTo("events") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                        composable("event_detail") {
-                            val detailState by detailViewModel.state.collectAsState()
-                            EventDetailScreen(
-                                state = detailState,
-                                onBack = { navController.popBackStack() },
-                                onDelete = { id -> detailViewModel.deleteEvent(id) },
-                                onEdit = { event ->
-                                    formViewModel.loadEventForEdit(event)
-                                    navController.navigate("event_form")
-                                },
-                                onToggleAttendance = { id -> detailViewModel.toggleAttendance(id) }
-                            )
-                        }
-                        composable("event_form") {
-                            val formState by formViewModel.state.collectAsState()
-                            val editingEventId by formViewModel.editingEventId.collectAsState()
-                            val title by formViewModel.title.collectAsState()
-                            val description by formViewModel.description.collectAsState()
-                            val location by formViewModel.location.collectAsState()
-                            val date by formViewModel.date.collectAsState()
-                            val category by formViewModel.category.collectAsState()
-
-                            LaunchedEffect(formState) {
-                                if (formState is EventFormState.Success) {
-                                    val wasEditingId = formViewModel.editingEventId.value
-                                    navController.popBackStack()
-                                    eventsViewModel.loadEvents()
-                                    if (wasEditingId != null) {
-                                        detailViewModel.loadEvent(wasEditingId)
-                                    }
+                                navController.navigate(destination) {
+                                    popUpTo("splash") { inclusive = true }
                                 }
                             }
+                        )
+                    }
+                    composable("onboarding") {
+                        OnboardingScreen(
+                            onBegin = {
+                                prefs.edit().putBoolean("onboarding_seen", true).apply()
+                                navController.navigate("register") {
+                                    popUpTo("onboarding") { inclusive = true }
+                                }
+                            },
+                            onAlreadyHaveAccount = {
+                                prefs.edit().putBoolean("onboarding_seen", true).apply()
+                                navController.navigate("login") {
+                                    popUpTo("onboarding") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable("login") {
+                        LoginScreen(
+                            authState = authState,
+                            onEmailLogin = { email, pass ->
+                                authViewModel.signInWithEmail(email, pass)
+                            },
+                            onGoogleLogin = {
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            },
+                            onFacebookLogin = {
+                                facebookLoginLauncher.launch(listOf("email", "public_profile"))
+                            },
+                            onNavigateToRegister = { navController.navigate("register") },
+                            onNavigateBack = { navController.popBackStack() },
+                            onLoginSuccess = {
+                                navController.navigate("events") {
+                                    popUpTo("onboarding") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable("register") {
+                        RegisterScreen(
+                            authState = authState,
+                            onRegister = { email, pass, name ->
+                                authViewModel.signUpWithEmail(email, pass, name)
+                            },
+                            onNavigateToLogin = { navController.navigate("login") },
+                            onRegisterSuccess = {
+                                navController.navigate("events") {
+                                    popUpTo("onboarding") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable("events") {
+                        LaunchedEffect(Unit) { eventsViewModel.loadEvents() }
+                        MainScreen(
+                            eventsViewModel = eventsViewModel,
+                            myEventsViewModel = myEventsViewModel,
+                            profileViewModel = profileViewModel,
+                            onEventClick = { id ->
+                                detailViewModel.loadEvent(id)
+                                navController.navigate("event_detail")
+                            },
+                            onCreateEvent = {
+                                formViewModel.resetForm()
+                                navController.navigate("event_form")
+                            },
+                            onLogout = {
+                                authViewModel.signOut()
+                                googleSignInClient.signOut()
+                                LoginManager.getInstance().logOut()
+                                navController.navigate("onboarding") {
+                                    popUpTo("events") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable("event_detail") {
+                        val detailState by detailViewModel.state.collectAsState()
+                        EventDetailScreen(
+                            state = detailState,
+                            onBack = { navController.popBackStack() },
+                            onDelete = { id -> detailViewModel.deleteEvent(id) },
+                            onEdit = { event ->
+                                formViewModel.loadEventForEdit(event)
+                                navController.navigate("event_form")
+                            },
+                            onToggleAttendance = { id -> detailViewModel.toggleAttendance(id) }
+                        )
+                    }
+                    composable("event_form") {
+                        val formState by formViewModel.state.collectAsState()
+                        val editingEventId by formViewModel.editingEventId.collectAsState()
+                        val title by formViewModel.title.collectAsState()
+                        val description by formViewModel.description.collectAsState()
+                        val location by formViewModel.location.collectAsState()
+                        val date by formViewModel.date.collectAsState()
+                        val category by formViewModel.category.collectAsState()
 
-                            EventFormScreen(
-                                state = formState,
-                                title = title,
-                                onTitleChange = { formViewModel.title.value = it },
-                                description = description,
-                                onDescriptionChange = { formViewModel.description.value = it },
-                                location = location,
-                                onLocationChange = { formViewModel.location.value = it },
-                                date = date,
-                                onDateChange = { formViewModel.date.value = it },
-                                selectedCategory = category,
-                                onCategoryChange = { formViewModel.category.value = it },
-                                onClose = { navController.popBackStack() },
-                                onSave = { formViewModel.saveEvent() },
-                                isEditMode = editingEventId != null
-                            )
+                        LaunchedEffect(formState) {
+                            if (formState is EventFormState.Success) {
+                                val wasEditingId = formViewModel.editingEventId.value
+                                navController.popBackStack()
+                                eventsViewModel.loadEvents()
+                                if (wasEditingId != null) {
+                                    detailViewModel.loadEvent(wasEditingId)
+                                }
+                            }
                         }
+
+                        EventFormScreen(
+                            state = formState,
+                            title = title,
+                            onTitleChange = { formViewModel.title.value = it },
+                            description = description,
+                            onDescriptionChange = { formViewModel.description.value = it },
+                            location = location,
+                            onLocationChange = { formViewModel.location.value = it },
+                            date = date,
+                            onDateChange = { formViewModel.date.value = it },
+                            selectedCategory = category,
+                            onCategoryChange = { formViewModel.category.value = it },
+                            onClose = { navController.popBackStack() },
+                            onSave = { formViewModel.saveEvent() },
+                            isEditMode = editingEventId != null
+                        )
                     }
                 }
             }
