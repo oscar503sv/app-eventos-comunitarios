@@ -86,6 +86,7 @@ fun RegisterScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(ScreenBg)
+            .systemBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
     ) {
