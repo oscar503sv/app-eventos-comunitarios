@@ -45,9 +45,11 @@ class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val eventsViewModel: EventsViewModel by viewModels()
     private val myEventsViewModel: MyEventsViewModel by viewModels()
+    private val historyViewModel: HistoryViewModel by viewModels()
     private val detailViewModel: EventDetailViewModel by viewModels()
     private val formViewModel: EventFormViewModel by viewModels()
     private val profileViewModel: ProfileViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -191,6 +193,7 @@ class MainActivity : ComponentActivity() {
                         MainScreen(
                             eventsViewModel = eventsViewModel,
                             myEventsViewModel = myEventsViewModel,
+                            historyViewModel = historyViewModel,
                             profileViewModel = profileViewModel,
                             onEventClick = { id ->
                                 detailViewModel.loadEvent(id)
