@@ -24,9 +24,10 @@ import com.eventos.comunitarios.ui.auth.AuthState
 import com.eventos.comunitarios.ui.auth.AuthViewModel
 import com.eventos.comunitarios.ui.auth.LoginScreen
 import com.eventos.comunitarios.ui.auth.RegisterScreen
-import com.eventos.comunitarios.ui.events.EventsScreen
-import com.eventos.comunitarios.ui.events.EventsViewModel
+import com.eventos.comunitarios.ui.events.*
+import com.eventos.comunitarios.ui.main.MainScreen
 import com.eventos.comunitarios.ui.onboarding.OnboardingScreen
+import com.eventos.comunitarios.ui.profile.ProfileViewModel
 import com.eventos.comunitarios.ui.splash.SplashScreen
 import com.eventos.comunitarios.ui.theme.AppEventosComunitariosTheme
 import com.facebook.CallbackManager
@@ -43,6 +44,10 @@ import java.security.MessageDigest
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val eventsViewModel: EventsViewModel by viewModels()
+    private val myEventsViewModel: MyEventsViewModel by viewModels()
+    private val detailViewModel: EventDetailViewModel by viewModels()
+    private val formViewModel: EventFormViewModel by viewModels()
+    private val profileViewModel: ProfileViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,7 +97,6 @@ class MainActivity : ComponentActivity() {
             AppEventosComunitariosTheme {
                 val navController = rememberNavController()
                 val authState by authViewModel.authState.collectAsState()
-                val eventsState by eventsViewModel.state.collectAsState()
 
                 val googleSignInLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartActivityForResult()
@@ -183,9 +187,18 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("events") {
                             LaunchedEffect(Unit) { eventsViewModel.loadEvents() }
-                            EventsScreen(
-                                state = eventsState,
-                                onRefresh = { eventsViewModel.loadEvents() },
+                            MainScreen(
+                                eventsViewModel = eventsViewModel,
+                                myEventsViewModel = myEventsViewModel,
+                                profileViewModel = profileViewModel,
+                                onEventClick = { id ->
+                                    detailViewModel.loadEvent(id)
+                                    navController.navigate("event_detail")
+                                },
+                                onCreateEvent = {
+                                    formViewModel.resetForm()
+                                    navController.navigate("event_form")
+                                },
                                 onLogout = {
                                     authViewModel.signOut()
                                     googleSignInClient.signOut()
@@ -194,6 +207,56 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("events") { inclusive = true }
                                     }
                                 }
+                            )
+                        }
+                        composable("event_detail") {
+                            val detailState by detailViewModel.state.collectAsState()
+                            EventDetailScreen(
+                                state = detailState,
+                                onBack = { navController.popBackStack() },
+                                onDelete = { id -> detailViewModel.deleteEvent(id) },
+                                onEdit = { event ->
+                                    formViewModel.loadEventForEdit(event)
+                                    navController.navigate("event_form")
+                                },
+                                onToggleAttendance = { id -> detailViewModel.toggleAttendance(id) }
+                            )
+                        }
+                        composable("event_form") {
+                            val formState by formViewModel.state.collectAsState()
+                            val editingEventId by formViewModel.editingEventId.collectAsState()
+                            val title by formViewModel.title.collectAsState()
+                            val description by formViewModel.description.collectAsState()
+                            val location by formViewModel.location.collectAsState()
+                            val date by formViewModel.date.collectAsState()
+                            val category by formViewModel.category.collectAsState()
+
+                            LaunchedEffect(formState) {
+                                if (formState is EventFormState.Success) {
+                                    val wasEditingId = formViewModel.editingEventId.value
+                                    navController.popBackStack()
+                                    eventsViewModel.loadEvents()
+                                    if (wasEditingId != null) {
+                                        detailViewModel.loadEvent(wasEditingId)
+                                    }
+                                }
+                            }
+
+                            EventFormScreen(
+                                state = formState,
+                                title = title,
+                                onTitleChange = { formViewModel.title.value = it },
+                                description = description,
+                                onDescriptionChange = { formViewModel.description.value = it },
+                                location = location,
+                                onLocationChange = { formViewModel.location.value = it },
+                                date = date,
+                                onDateChange = { formViewModel.date.value = it },
+                                selectedCategory = category,
+                                onCategoryChange = { formViewModel.category.value = it },
+                                onClose = { navController.popBackStack() },
+                                onSave = { formViewModel.saveEvent() },
+                                isEditMode = editingEventId != null
                             )
                         }
                     }

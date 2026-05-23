@@ -21,11 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -247,15 +250,24 @@ fun RegisterScreen(
                 colors = CheckboxDefaults.colors(checkedColor = AppPrimary)
             )
             Spacer(Modifier.width(4.dp))
-            Text(stringResource(R.string.register_terms_prefix), fontSize = 13.sp, color = Color(0xFF555566))
-            Spacer(Modifier.width(3.dp))
-            Text(stringResource(R.string.register_terms_link), fontSize = 13.sp,
-                color = AppPrimary, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.width(3.dp))
-            Text(stringResource(R.string.register_privacy_mid), fontSize = 13.sp, color = Color(0xFF555566))
-            Spacer(Modifier.width(3.dp))
-            Text(stringResource(R.string.register_privacy_link), fontSize = 13.sp,
-                color = AppPrimary, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = buildAnnotatedString {
+                    append(stringResource(R.string.register_terms_prefix))
+                    append(" ")
+                    withStyle(style = SpanStyle(color = AppPrimary, fontWeight = FontWeight.SemiBold)) {
+                        append(stringResource(R.string.register_terms_link))
+                    }
+                    append(" ")
+                    append(stringResource(R.string.register_privacy_mid))
+                    append(" ")
+                    withStyle(style = SpanStyle(color = AppPrimary, fontWeight = FontWeight.SemiBold)) {
+                        append(stringResource(R.string.register_privacy_link))
+                    }
+                },
+                fontSize = 13.sp,
+                color = Color(0xFF555566),
+                lineHeight = 18.sp
+            )
         }
 
         Spacer(Modifier.height(20.dp))

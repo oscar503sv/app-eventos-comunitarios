@@ -23,20 +23,31 @@ model User {
 }
 
 model Event {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   title       String
-  description String?  @db.Text
+  description String?       @db.Text
   date        DateTime
   location    String
+  category    EventCategory @default(OTRO)
   organizerId String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
   organizer   User              @relation("Organizer", fields: [organizerId], references: [id])
   attendances EventAttendance[]
   reviews     Review[]
-  
+
   @@map("events")
+}
+
+enum EventCategory {
+  CULTURA
+  MUSICA
+  DEPORTE
+  EDUCACION
+  GASTRONOMIA
+  SALUD
+  OTRO
 }
 
 model EventAttendance {
@@ -47,8 +58,8 @@ model EventAttendance {
   createdAt DateTime @default(now())
   
   user  User  @relation(fields: [userId], references: [id])
-  event Event @relation(fields: [eventId], references: [id])
-  
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@unique([userId, eventId])
   @@map("event_attendances")
 }
@@ -62,8 +73,8 @@ model Review {
   createdAt DateTime @default(now())
   
   user  User  @relation(fields: [userId], references: [id])
-  event Event @relation(fields: [eventId], references: [id])
-  
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@unique([userId, eventId])
   @@map("reviews")
 }

@@ -8,6 +8,7 @@ import {
   cancelAttendance,
   getUserEvents,
   updateEvent,
+  deleteEvent,
 } from '../controllers/event.controller.js';
 
 const eventRouter = Router();
@@ -17,11 +18,31 @@ const eventRouter = Router();
  * /api/events:
  *   get:
  *     tags: [Events]
- *     summary: Listar todos los eventos
- *     description: Devuelve todos los eventos ordenados por fecha ascendente, incluyendo el organizador y conteo de asistencias y reseñas.
+ *     summary: Listar todos los eventos (paginado)
+ *     description: >
+ *       Devuelve los eventos ordenados por fecha ascendente, incluyendo el organizador
+ *       y conteo de asistencias y reseñas. Paginado: defaults `page=1`, `limit=20`; `limit` máximo 50.
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Número de página (1-indexed)
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 20
+ *         description: Cantidad de eventos por página (máx 50)
  *     responses:
  *       200:
- *         description: Lista de eventos
+ *         description: Lista paginada de eventos
  *         content:
  *           application/json:
  *             schema:
@@ -33,6 +54,8 @@ const eventRouter = Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/EventSummary'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
  *             example:
  *               success: true
  *               events:
@@ -41,6 +64,7 @@ const eventRouter = Router();
  *                   description: "Aprende técnicas de fotografía callejera con fotógrafos locales."
  *                   date: "2025-06-15T18:00:00.000Z"
  *                   location: "Plaza Mayor, Ciudad de México"
+ *                   category: "CULTURA"
  *                   organizerId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
  *                   createdAt: "2025-05-01T09:00:00.000Z"
  *                   updatedAt: "2025-05-10T11:00:00.000Z"
@@ -51,6 +75,20 @@ const eventRouter = Router();
  *                   _count:
  *                     attendances: 12
  *                     reviews: 4
+ *               pagination:
+ *                 page: 1
+ *                 limit: 20
+ *                 total: 47
+ *                 totalPages: 3
+ *                 hasMore: true
+ *       400:
+ *         description: Parámetros de paginación inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *             example:
+ *               error: "\"limit\" debe ser un entero entre 1 y 50"
  *       401:
  *         description: Token no proporcionado o inválido
  *         content:
@@ -86,11 +124,17 @@ const eventRouter = Router();
  *               location:
  *                 type: string
  *                 description: Lugar donde se realizará el evento
+ *               category:
+ *                 type: string
+ *                 enum: [CULTURA, MUSICA, DEPORTE, EDUCACION, GASTRONOMIA, SALUD, OTRO]
+ *                 default: OTRO
+ *                 description: Categoría del evento. Opcional; si no se envía o es null, se guarda como "OTRO".
  *           example:
  *             title: "Taller de fotografía urbana"
  *             description: "Aprende técnicas de fotografía callejera con fotógrafos locales."
  *             date: "2025-06-15T18:00:00.000Z"
  *             location: "Plaza Mayor, Ciudad de México"
+ *             category: "CULTURA"
  *     responses:
  *       201:
  *         description: Evento creado exitosamente
@@ -319,11 +363,16 @@ eventRouter.get('/my-events', verifyFirebaseToken, attachDbUser, getUserEvents);
  *                 format: date-time
  *               location:
  *                 type: string
+ *               category:
+ *                 type: string
+ *                 enum: [CULTURA, MUSICA, DEPORTE, EDUCACION, GASTRONOMIA, SALUD, OTRO]
+ *                 description: Categoría del evento. Opcional; si no se envía, se conserva la actual.
  *           example:
  *             title: "Taller de fotografía urbana (actualizado)"
  *             description: "Sesión ampliada con práctica en exteriores."
  *             date: "2025-06-16T18:00:00.000Z"
  *             location: "Parque Lincoln, Ciudad de México"
+ *             category: "CULTURA"
  *     responses:
  *       200:
  *         description: Evento actualizado
@@ -377,6 +426,67 @@ eventRouter.get('/:id', verifyFirebaseToken, getEventById);
 eventRouter.post('/', verifyFirebaseToken, attachDbUser, createEvent);
 
 eventRouter.put('/:id', verifyFirebaseToken, attachDbUser, updateEvent);
+
+/**
+ * @openapi
+ * /api/events/{id}:
+ *   delete:
+ *     tags: [Events]
+ *     summary: Eliminar un evento
+ *     description: >
+ *       Elimina un evento permanentemente. Solo el organizador original puede
+ *       eliminarlo; cualquier otro usuario recibirá un error 403. Las asistencias
+ *       y reseñas asociadas se borran en cascada.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del evento a eliminar
+ *         example: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+ *     responses:
+ *       200:
+ *         description: Evento eliminado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *             example:
+ *               success: true
+ *               message: "Evento eliminado"
+ *       401:
+ *         description: Token no proporcionado o inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *             example:
+ *               error: "No autenticado"
+ *       403:
+ *         description: El usuario no es el organizador del evento
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *             example:
+ *               error: "Solo el organizador puede eliminar el evento"
+ *       404:
+ *         description: Evento no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *             example:
+ *               error: "Evento no encontrado"
+ */
+eventRouter.delete('/:id', verifyFirebaseToken, attachDbUser, deleteEvent);
 
 /**
  * @openapi

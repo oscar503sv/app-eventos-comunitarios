@@ -23,10 +23,11 @@ Esta guía es autosuficiente: copia los snippets, ajusta el `BASE_URL` y empieza
 
 Esta API expone los siguientes recursos:
 
-- **Eventos** — crear, listar, ver detalle, actualizar.
+- **Eventos** — crear, listar, ver detalle, actualizar, eliminar.
 - **Asistencias (RSVP)** — confirmar o cancelar asistencia a un evento.
 - **Reseñas** — calificar (1–5) y comentar eventos.
 - **Historial** — eventos que el usuario organizó o a los que asistió.
+- **Perfil de usuario** — datos básicos + conteos agregados (organizados, asistidos, reseñas).
 - **Health check** — estado público del servicio.
 
 **Stack del backend** (solo informativo):
@@ -215,7 +216,9 @@ class FirebaseAuthAuthenticator : Authenticator {
 1. Verifica el token de Firebase.
 2. Busca al usuario en la BD por `firebaseUid`, luego por `email`.
 3. Si no existe, lo **crea** con `firebaseUid`, `email` y `displayName` extraídos del token.
-4. Si existe, actualiza `displayName`/`email` si cambiaron.
+4. Si existe, actualiza `email` si cambió. **`displayName` NO se sobrescribe desde el token** — solo se inicializa la primera vez que el usuario aparece en la BD. Después de eso, el usuario controla su nombre vía `PUT /api/users/profile`.
+
+> Esta semántica es importante: los tokens de Firebase cachean las claims (incluido `name`) por ~1 hora, así que si el middleware sobrescribiera `displayName` desde el token en cada request, cualquier edición vía PUT se revertiría hasta que el token caducara.
 
 Recomendación: tras hacer login con Firebase, dispara cualquier request autenticado (p. ej. `GET /api/events`) para forzar la sincronización antes de que el usuario intente crear/asistir/reseñar.
 
@@ -246,6 +249,19 @@ data class UserPublic(
     val displayName: String?,
     val email: String? = null
 )
+
+/** Conteos agregados que aparecen en GET /api/users/profile. */
+data class ProfileCounts(
+    val organized: Int,   // eventos organizados por el usuario
+    val attended: Int,    // asistencias confirmadas (status='confirmed')
+    val reviews: Int      // reseñas escritas por el usuario
+)
+
+/** Forma que devuelve GET /api/users/profile. */
+data class UserProfile(
+    val user: User,
+    val counts: ProfileCounts
+)
 ```
 
 ### 4.2 Evento
@@ -257,6 +273,7 @@ data class Event(
     val description: String?,
     val date: String,         // ISO 8601
     val location: String,
+    val category: String,     // CULTURA | MUSICA | DEPORTE | EDUCACION | GASTRONOMIA | SALUD | OTRO
     val organizerId: String,
     val createdAt: String,
     val updatedAt: String
@@ -274,6 +291,7 @@ data class EventSummary(
     val description: String?,
     val date: String,
     val location: String,
+    val category: String,
     val organizerId: String,
     val createdAt: String,
     val updatedAt: String,
@@ -288,6 +306,7 @@ data class EventDetail(
     val description: String?,
     val date: String,
     val location: String,
+    val category: String,
     val organizerId: String,
     val createdAt: String,
     val updatedAt: String,
@@ -296,6 +315,20 @@ data class EventDetail(
     val reviews: List<ReviewWithUser>
 )
 ```
+
+> `category` se modela como `String` para tolerar valores futuros. Constantes sugeridas:
+>
+> ```kotlin
+> object EventCategory {
+>     const val CULTURA = "CULTURA"
+>     const val MUSICA = "MUSICA"
+>     const val DEPORTE = "DEPORTE"
+>     const val EDUCACION = "EDUCACION"
+>     const val GASTRONOMIA = "GASTRONOMIA"
+>     const val SALUD = "SALUD"
+>     const val OTRO = "OTRO"
+> }
+> ```
 
 ### 4.3 Asistencia
 
@@ -385,7 +418,19 @@ data class HealthServices(
 ### 4.6 Wrappers de respuesta
 
 ```kotlin
-data class EventsResponse(val success: Boolean, val events: List<EventSummary>)
+data class Pagination(
+    val page: Int,
+    val limit: Int,
+    val total: Int,        // total de elementos en toda la colección
+    val totalPages: Int,
+    val hasMore: Boolean   // true si existe al menos una página adicional
+)
+
+data class EventsResponse(
+    val success: Boolean,
+    val events: List<EventSummary>,
+    val pagination: Pagination
+)
 data class EventDetailResponse(val success: Boolean, val event: EventDetail)
 data class EventResponse(val success: Boolean, val event: Event)
 data class AttendanceResponse(val success: Boolean, val attendance: EventAttendance)
@@ -400,6 +445,8 @@ data class ReviewsResponse(
     val stats: ReviewStats
 )
 data class ReviewResponse(val success: Boolean, val review: Review)
+data class ProfileResponse(val success: Boolean, val profile: UserProfile)
+data class SuccessResponse(val success: Boolean, val message: String)
 
 data class ApiError(val error: String)
 ```
@@ -411,19 +458,25 @@ data class CreateEventRequest(
     val title: String,
     val description: String?,
     val date: String,        // ISO 8601
-    val location: String
+    val location: String,
+    val category: String? = null  // opcional; null o ausente → "OTRO"
 )
 
 data class UpdateEventRequest(
     val title: String,
     val description: String?,
     val date: String,
-    val location: String
+    val location: String,
+    val category: String? = null  // opcional; null o ausente → no se modifica
 )
 
 data class CreateReviewRequest(
     val rating: Int,         // 1..5
     val comment: String?
+)
+
+data class UpdateProfileRequest(
+    val displayName: String  // requerido, 1..80 caracteres (se trimea en backend)
 )
 ```
 
@@ -441,10 +494,13 @@ Resumen rápido:
 | 5.4 | GET | `/api/events/{id}` | Sí | Detalle de evento |
 | 5.5 | POST | `/api/events` | Sí | Crear evento |
 | 5.6 | PUT | `/api/events/{id}` | Sí | Actualizar evento (solo organizador) |
-| 5.7 | POST | `/api/events/{id}/attend` | Sí | Confirmar asistencia |
-| 5.8 | POST | `/api/events/{id}/cancel` | Sí | Cancelar asistencia |
-| 5.9 | GET | `/api/reviews/{eventId}` | Sí | Reseñas + estadísticas |
-| 5.10 | POST | `/api/reviews/{eventId}` | Sí | Crear/actualizar reseña |
+| 5.7 | DELETE | `/api/events/{id}` | Sí | Eliminar evento (solo organizador) |
+| 5.8 | POST | `/api/events/{id}/attend` | Sí | Confirmar asistencia |
+| 5.9 | POST | `/api/events/{id}/cancel` | Sí | Cancelar asistencia |
+| 5.10 | GET | `/api/reviews/{eventId}` | Sí | Reseñas + estadísticas |
+| 5.11 | POST | `/api/reviews/{eventId}` | Sí | Crear/actualizar reseña |
+| 5.12 | GET | `/api/users/profile` | Sí | Perfil del usuario + conteos |
+| 5.13 | PUT | `/api/users/profile` | Sí | Actualizar perfil (displayName, sync con Firebase) |
 
 ---
 
@@ -489,7 +545,16 @@ suspend fun health(): HealthResponse
 
 ### 5.2 `GET /api/events`
 
-Lista todos los eventos ordenados por **fecha ascendente** (próximos primero), incluyendo organizador y conteos.
+Lista los eventos ordenados por **fecha ascendente** (próximos primero), incluyendo organizador y conteos. **Paginado**.
+
+**Query params**:
+
+| Campo | Tipo | Requerido | Default | Notas |
+|---|---|---|---|---|
+| `page` | integer | ❌ | `1` | 1-indexed. Debe ser ≥ 1. |
+| `limit` | integer | ❌ | `20` | Cantidad por página. Rango **1–50**. |
+
+> Ejemplo: `GET /api/events?page=2&limit=10`
 
 **Response 200**:
 
@@ -503,6 +568,7 @@ Lista todos los eventos ordenados por **fecha ascendente** (próximos primero), 
       "description": "Aprende técnicas de fotografía callejera con fotógrafos locales.",
       "date": "2025-06-15T18:00:00.000Z",
       "location": "Plaza Mayor, Ciudad de México",
+      "category": "CULTURA",
       "organizerId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "createdAt": "2025-05-01T09:00:00.000Z",
       "updatedAt": "2025-05-10T11:00:00.000Z",
@@ -513,14 +579,24 @@ Lista todos los eventos ordenados por **fecha ascendente** (próximos primero), 
       },
       "_count": { "attendances": 12, "reviews": 4 }
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 47,
+    "totalPages": 3,
+    "hasMore": true
+  }
 }
 ```
+
+> `hasMore` es `true` cuando `page < totalPages`. Si la colección está vacía, `total` y `totalPages` valen `0` y `hasMore` es `false`.
 
 **Errores**:
 
 | Status | Body |
 |---|---|
+| 400 | `{ "error": "\"page\" debe ser un entero mayor o igual a 1" }` o `{ "error": "\"limit\" debe ser un entero entre 1 y 50" }` |
 | 401 | `{ "error": "No token provided" }` |
 | 500 | `{ "error": "Error al obtener eventos" }` |
 
@@ -528,8 +604,13 @@ Lista todos los eventos ordenados por **fecha ascendente** (próximos primero), 
 
 ```kotlin
 @GET("api/events")
-suspend fun getEvents(): EventsResponse
+suspend fun getEvents(
+    @Query("page") page: Int = 1,
+    @Query("limit") limit: Int = 20
+): EventsResponse
 ```
+
+> **Patrón de scroll infinito sugerido:** llama con `page = 1` al cargar; cuando el usuario llegue al final y `pagination.hasMore == true`, pide `page + 1` y concatena `events` a la lista existente.
 
 ---
 
@@ -673,7 +754,8 @@ Crea un evento. El usuario autenticado queda como **organizador**.
   "title": "Taller de fotografía urbana",
   "description": "Aprende técnicas de fotografía callejera con fotógrafos locales.",
   "date": "2025-06-15T18:00:00.000Z",
-  "location": "Plaza Mayor, Ciudad de México"
+  "location": "Plaza Mayor, Ciudad de México",
+  "category": "CULTURA"
 }
 ```
 
@@ -683,6 +765,7 @@ Crea un evento. El usuario autenticado queda como **organizador**.
 | `description` | string \| null | ❌ | `null` permitido |
 | `date` | string ISO 8601 | ✅ | |
 | `location` | string | ✅ | |
+| `category` | string | ❌ | Uno de: `CULTURA`, `MUSICA`, `DEPORTE`, `EDUCACION`, `GASTRONOMIA`, `SALUD`, `OTRO`. Si se omite o llega `null`, se guarda como `"OTRO"`. |
 
 **Response 201**:
 
@@ -695,6 +778,7 @@ Crea un evento. El usuario autenticado queda como **organizador**.
     "description": "Aprende técnicas de fotografía callejera con fotógrafos locales.",
     "date": "2025-06-15T18:00:00.000Z",
     "location": "Plaza Mayor, Ciudad de México",
+    "category": "CULTURA",
     "organizerId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "createdAt": "2025-05-01T09:00:00.000Z",
     "updatedAt": "2025-05-01T09:00:00.000Z"
@@ -706,6 +790,7 @@ Crea un evento. El usuario autenticado queda como **organizador**.
 
 | Status | Body |
 |---|---|
+| 400 | `{ "error": "Categoría inválida. Valores permitidos: CULTURA, MUSICA, DEPORTE, EDUCACION, GASTRONOMIA, SALUD, OTRO" }` |
 | 401 | `{ "error": "No autenticado" }` |
 | 404 | `{ "error": "Usuario no encontrado" }` |
 | 500 | `{ "error": "Error al crear evento" }` |
@@ -725,7 +810,7 @@ Actualiza un evento. **Solo el organizador original puede modificarlo** — otro
 
 **Path params:** `id` — UUID del evento.
 
-**Request body:** mismo shape que `CreateEventRequest`.
+**Request body:** mismo shape que `CreateEventRequest`. El campo `category` es opcional; si no se envía, se conserva la categoría existente.
 
 **Response 200**:
 
@@ -738,6 +823,7 @@ Actualiza un evento. **Solo el organizador original puede modificarlo** — otro
     "description": "Sesión ampliada con práctica en exteriores.",
     "date": "2025-06-16T18:00:00.000Z",
     "location": "Parque Lincoln, Ciudad de México",
+    "category": "CULTURA",
     "organizerId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "createdAt": "2025-05-01T09:00:00.000Z",
     "updatedAt": "2025-05-20T15:00:00.000Z"
@@ -749,7 +835,7 @@ Actualiza un evento. **Solo el organizador original puede modificarlo** — otro
 
 | Status | Body |
 |---|---|
-| 400 | `{ "error": "ID de evento requerido" }` |
+| 400 | `{ "error": "ID de evento requerido" }` o `{ "error": "Categoría inválida. Valores permitidos: ..." }` |
 | 401 | `{ "error": "No autenticado" }` |
 | 403 | `{ "error": "Solo el organizador puede editar el evento" }` |
 | 404 | `{ "error": "Evento no encontrado" }` |
@@ -767,7 +853,49 @@ suspend fun updateEvent(
 
 ---
 
-### 5.7 `POST /api/events/{id}/attend`
+### 5.7 `DELETE /api/events/{id}`
+
+Elimina un evento permanentemente. **Solo el organizador original puede eliminarlo** — otros usuarios reciben 403. Las **asistencias** y **reseñas** asociadas al evento se borran **en cascada** automáticamente.
+
+**Path params:** `id` — UUID del evento.
+
+**No envía body.**
+
+**Response 200**:
+
+```json
+{
+  "success": true,
+  "message": "Evento eliminado"
+}
+```
+
+**Errores**:
+
+| Status | Body |
+|---|---|
+| 400 | `{ "error": "ID de evento requerido" }` |
+| 401 | `{ "error": "No autenticado" }` |
+| 403 | `{ "error": "Solo el organizador puede eliminar el evento" }` |
+| 404 | `{ "error": "Evento no encontrado" }` |
+| 500 | `{ "error": "Error al eliminar evento" }` |
+
+**Retrofit:**
+
+```kotlin
+@DELETE("api/events/{id}")
+suspend fun deleteEvent(@Path("id") id: String): SuccessResponse
+```
+
+> Necesitarás añadir el wrapper:
+>
+> ```kotlin
+> data class SuccessResponse(val success: Boolean, val message: String)
+> ```
+
+---
+
+### 5.8 `POST /api/events/{id}/attend`
 
 Confirma asistencia (RSVP). Comportamiento **upsert**: si ya había un registro (incluso `cancelled`), lo actualiza a `confirmed`. **No envía body.**
 
@@ -806,7 +934,7 @@ suspend fun attendEvent(@Path("id") id: String): AttendanceResponse
 
 ---
 
-### 5.8 `POST /api/events/{id}/cancel`
+### 5.9 `POST /api/events/{id}/cancel`
 
 Cancela una asistencia previa (cambia `status` a `cancelled`). **Requiere haber confirmado antes** — si no existe el registro, devolverá 500.
 
@@ -845,7 +973,7 @@ suspend fun cancelAttendance(@Path("id") id: String): AttendanceResponse
 
 ---
 
-### 5.9 `GET /api/reviews/{eventId}`
+### 5.10 `GET /api/reviews/{eventId}`
 
 Lista las reseñas de un evento (con usuario) + estadísticas agregadas. Ordenadas por `createdAt` desc.
 
@@ -893,7 +1021,7 @@ suspend fun getReviews(@Path("eventId") eventId: String): ReviewsResponse
 
 ---
 
-### 5.10 `POST /api/reviews/{eventId}`
+### 5.11 `POST /api/reviews/{eventId}`
 
 Crea o actualiza una reseña (**upsert** por `(userId, eventId)`). Un usuario solo puede tener **una** reseña por evento.
 
@@ -950,6 +1078,120 @@ suspend fun createReview(
 
 ---
 
+### 5.12 `GET /api/users/profile`
+
+Devuelve los datos básicos del usuario autenticado más conteos agregados: eventos organizados, asistencias confirmadas y reseñas escritas. **No envía body, no recibe query params.**
+
+> Los conteos vienen calculados al momento — no hay caché — así que reflejan el estado actual de la BD.
+
+**Response 200**:
+
+```json
+{
+  "success": true,
+  "profile": {
+    "user": {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "firebaseUid": "firebase_uid_abc123",
+      "email": "ana@example.com",
+      "displayName": "Ana García",
+      "createdAt": "2025-01-15T10:30:00.000Z",
+      "updatedAt": "2025-03-20T14:00:00.000Z"
+    },
+    "counts": {
+      "organized": 5,
+      "attended": 12,
+      "reviews": 3
+    }
+  }
+}
+```
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `profile.user` | object | Datos del usuario en BD (mismo `User` que en sección 4.1). |
+| `profile.counts.organized` | integer | Eventos en los que el usuario es organizador. |
+| `profile.counts.attended` | integer | Asistencias **confirmadas** (no incluye `cancelled`). |
+| `profile.counts.reviews` | integer | Reseñas que el usuario ha escrito. |
+
+**Errores**:
+
+| Status | Body |
+|---|---|
+| 401 | `{ "error": "No autenticado" }` |
+| 404 | `{ "error": "Usuario no encontrado" }` |
+| 500 | `{ "error": "Error al obtener perfil" }` |
+
+**Retrofit:**
+
+```kotlin
+@GET("api/users/profile")
+suspend fun getProfile(): ProfileResponse
+```
+
+---
+
+### 5.13 `PUT /api/users/profile`
+
+Actualiza el `displayName` del usuario autenticado. El backend escribe el nuevo nombre tanto en la **base de datos** (fuente de verdad para la app) como en **Firebase Auth** (para que `currentUser.displayName` también se actualice tras refrescar). Devuelve el perfil actualizado en el mismo formato que `GET /api/users/profile`.
+
+> **Por qué se sincroniza Firebase:** la BD es la fuente de verdad para la app (el middleware nunca sobrescribe `displayName` desde el token, ver sección 3.5), pero actualizar Firebase mantiene `FirebaseUser.displayName` alineado para cualquier código que lo lea directamente. El backend hace primero la llamada a Firebase Admin y luego la BD.
+
+**Request body**:
+
+```json
+{
+  "displayName": "Ana García López"
+}
+```
+
+| Campo | Tipo | Requerido | Notas |
+|---|---|---|---|
+| `displayName` | string | ✅ | 1–80 caracteres. Los espacios extremos se trimean en backend. No se permite `null` ni cadena vacía. |
+
+**Response 200**:
+
+```json
+{
+  "success": true,
+  "profile": {
+    "user": {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "firebaseUid": "firebase_uid_abc123",
+      "email": "ana@example.com",
+      "displayName": "Ana García López",
+      "createdAt": "2025-01-15T10:30:00.000Z",
+      "updatedAt": "2026-05-22T16:00:00.000Z"
+    },
+    "counts": {
+      "organized": 5,
+      "attended": 12,
+      "reviews": 3
+    }
+  }
+}
+```
+
+**Errores**:
+
+| Status | Body |
+|---|---|
+| 400 | `{ "error": "\"displayName\" es requerido y debe ser un string" }` o `{ "error": "\"displayName\" debe tener entre 1 y 80 caracteres" }` |
+| 401 | `{ "error": "No autenticado" }` |
+| 404 | `{ "error": "Usuario no encontrado" }` |
+| 500 | `{ "error": "Error al actualizar perfil" }` (incluye fallos al sincronizar con Firebase) |
+
+**Retrofit:**
+
+```kotlin
+@PUT("api/users/profile")
+suspend fun updateProfile(@Body body: UpdateProfileRequest): ProfileResponse
+```
+
+> **Tip cliente:** después de un PUT exitoso, el `displayName` viejo seguirá en el `FirebaseUser` local hasta que llames a `currentUser?.reload()` o renueves el token con `getIdToken(forceRefresh = true)`. Como ya tienes el nuevo nombre en la respuesta, lo más simple es usar `profile.user.displayName` en tu UI.
+
+---
+
 ## 6. Setup completo de Retrofit
 
 ### 6.1 Dependencias Gradle
@@ -984,7 +1226,10 @@ interface EventsApi {
 
     // --- Eventos ---
     @GET("api/events")
-    suspend fun getEvents(): EventsResponse
+    suspend fun getEvents(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): EventsResponse
 
     @GET("api/events/my-events")
     suspend fun getMyEvents(): MyEventsResponse
@@ -1001,6 +1246,9 @@ interface EventsApi {
         @Body body: UpdateEventRequest
     ): EventResponse
 
+    @DELETE("api/events/{id}")
+    suspend fun deleteEvent(@Path("id") id: String): SuccessResponse
+
     @POST("api/events/{id}/attend")
     suspend fun attendEvent(@Path("id") id: String): AttendanceResponse
 
@@ -1016,6 +1264,13 @@ interface EventsApi {
         @Path("eventId") eventId: String,
         @Body body: CreateReviewRequest
     ): ReviewResponse
+
+    // --- Usuario ---
+    @GET("api/users/profile")
+    suspend fun getProfile(): ProfileResponse
+
+    @PUT("api/users/profile")
+    suspend fun updateProfile(@Body body: UpdateProfileRequest): ProfileResponse
 }
 ```
 
@@ -1096,8 +1351,8 @@ class EventsRepository(
 ) {
     private val errorAdapter = moshi.adapter(ApiError::class.java)
 
-    suspend fun getEvents(): ApiResult<List<EventSummary>> = safeCall {
-        api.getEvents().events
+    suspend fun getEvents(page: Int = 1, limit: Int = 20): ApiResult<EventsResponse> = safeCall {
+        api.getEvents(page, limit)
     }
 
     suspend fun createEvent(req: CreateEventRequest): ApiResult<Event> = safeCall {
@@ -1110,6 +1365,14 @@ class EventsRepository(
 
     suspend fun reviewsFor(eventId: String): ApiResult<ReviewsResponse> = safeCall {
         api.getReviews(eventId)
+    }
+
+    suspend fun profile(): ApiResult<UserProfile> = safeCall {
+        api.getProfile().profile
+    }
+
+    suspend fun updateDisplayName(name: String): ApiResult<UserProfile> = safeCall {
+        api.updateProfile(UpdateProfileRequest(displayName = name)).profile
     }
 
     private suspend fun <T> safeCall(block: suspend () -> T): ApiResult<T> = try {
@@ -1141,11 +1404,35 @@ class EventsViewModel(
     val events = MutableStateFlow<List<EventSummary>>(emptyList())
     val error  = MutableStateFlow<String?>(null)
 
+    private var page = 1
+    private var hasMore = true
+
+    /** Carga la primera página (resetea el estado). */
     fun load() {
+        page = 1
+        hasMore = true
         viewModelScope.launch {
-            when (val result = repo.getEvents()) {
-                is ApiResult.Success -> events.value = result.data
-                is ApiResult.Error   -> error.value = result.message
+            when (val result = repo.getEvents(page = 1)) {
+                is ApiResult.Success -> {
+                    events.value = result.data.events
+                    hasMore = result.data.pagination.hasMore
+                }
+                is ApiResult.Error -> error.value = result.message
+            }
+        }
+    }
+
+    /** Llámalo al llegar al final de la lista (scroll infinito). */
+    fun loadMore() {
+        if (!hasMore) return
+        viewModelScope.launch {
+            when (val result = repo.getEvents(page = page + 1)) {
+                is ApiResult.Success -> {
+                    events.value = events.value + result.data.events
+                    page = result.data.pagination.page
+                    hasMore = result.data.pagination.hasMore
+                }
+                is ApiResult.Error -> error.value = result.message
             }
         }
     }
@@ -1159,15 +1446,19 @@ class EventsViewModel(
 | # | Regla | Status que devuelve si la violas |
 |---|---|---|
 | 1 | Solo el organizador puede editar un evento. | 403 |
-| 2 | Un usuario solo puede tener **una** reseña por evento (POST hace upsert silencioso). | — (upsert) |
-| 3 | Un usuario solo puede tener **un** registro de asistencia por evento (attend tras cancel reactiva el mismo registro). | — (upsert) |
-| 4 | `rating` debe ser entero **1–5** inclusive. | 400 |
-| 5 | `description` y `comment` son nullable; envía `null` si no aplican. | — |
-| 6 | `GET /api/events` viene ordenado por `date` ascendente (próximos primero). | — |
-| 7 | El usuario en BD se crea automáticamente en la primera request autenticada (no hay endpoint de signup). | — |
-| 8 | Cancelar asistencia requiere haber confirmado antes; si no existe el registro, devuelve 500. | 500 |
-| 9 | `attendances` en `GET /api/events/my-events` incluye registros `cancelled` — filtra en cliente si solo quieres confirmados. | — |
-| 10 | Todas las fechas son **ISO 8601 UTC**; convierte a hora local en el cliente. | — |
+| 2 | Solo el organizador puede eliminar un evento. Al hacerlo, sus asistencias y reseñas se borran en cascada. | 403 |
+| 3 | Un usuario solo puede tener **una** reseña por evento (POST hace upsert silencioso). | — (upsert) |
+| 4 | Un usuario solo puede tener **un** registro de asistencia por evento (attend tras cancel reactiva el mismo registro). | — (upsert) |
+| 5 | `rating` debe ser entero **1–5** inclusive. | 400 |
+| 6 | `description` y `comment` son nullable; envía `null` si no aplican. | — |
+| 7 | `category` es opcional al crear/editar: si no se envía, en `POST` se guarda como `"OTRO"` y en `PUT` se conserva la actual. Solo se aceptan los 7 valores del enum. | 400 si valor inválido |
+| 8 | `GET /api/events` viene **paginado** (`page` y `limit`, defaults `1` y `20`, `limit` máx 50) y ordenado por `date` ascendente (próximos primero). Usa `pagination.hasMore` para decidir si pedir la siguiente página. | 400 si page/limit inválidos |
+| 9 | El usuario en BD se crea automáticamente en la primera request autenticada (no hay endpoint de signup). | — |
+| 10 | Cancelar asistencia requiere haber confirmado antes; si no existe el registro, devuelve 500. | 500 |
+| 11 | `attendances` en `GET /api/events/my-events` incluye registros `cancelled` — filtra en cliente si solo quieres confirmados. | — |
+| 12 | Todas las fechas son **ISO 8601 UTC**; convierte a hora local en el cliente. | — |
+| 13 | La BD es la **fuente de verdad** para `displayName`. El middleware solo lo inicializa desde el token de Firebase cuando el usuario aún no existe en BD; después nunca lo sobrescribe. Usa `PUT /api/users/profile` para editarlo. | — |
+| 14 | Tras un `PUT /api/users/profile` exitoso, el `FirebaseUser` local conserva el nombre viejo hasta que llames `currentUser?.reload()` o `getIdToken(forceRefresh = true)`. Para la UI, prefiere `profile.user.displayName` que viene en la respuesta. | — |
 
 ---
 

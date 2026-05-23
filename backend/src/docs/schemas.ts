@@ -71,6 +71,11 @@
  *         location:
  *           type: string
  *           example: "Plaza Mayor, Ciudad de México"
+ *         category:
+ *           type: string
+ *           enum: [CULTURA, MUSICA, DEPORTE, EDUCACION, GASTRONOMIA, SALUD, OTRO]
+ *           default: OTRO
+ *           example: "CULTURA"
  *         organizerId:
  *           type: string
  *           format: uuid
@@ -83,7 +88,7 @@
  *           type: string
  *           format: date-time
  *           example: "2025-05-10T11:00:00.000Z"
- *       required: [id, title, date, location, organizerId, createdAt, updatedAt]
+ *       required: [id, title, date, location, category, organizerId, createdAt, updatedAt]
  *
  *     EventWithRelations:
  *       allOf:
@@ -197,6 +202,81 @@
  *           type: integer
  *           example: 8
  *       required: [average, count]
+ *
+ *     UserProfile:
+ *       type: object
+ *       description: Perfil del usuario autenticado con conteos agregados
+ *       properties:
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               format: uuid
+ *               example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *             firebaseUid:
+ *               type: string
+ *               example: "firebase_uid_abc123"
+ *             email:
+ *               type: string
+ *               format: email
+ *               example: "ana@example.com"
+ *             displayName:
+ *               type: string
+ *               nullable: true
+ *               example: "Ana García"
+ *             createdAt:
+ *               type: string
+ *               format: date-time
+ *               example: "2025-01-15T10:30:00.000Z"
+ *             updatedAt:
+ *               type: string
+ *               format: date-time
+ *               example: "2025-03-20T14:00:00.000Z"
+ *           required: [id, firebaseUid, email, createdAt, updatedAt]
+ *         counts:
+ *           type: object
+ *           properties:
+ *             organized:
+ *               type: integer
+ *               description: Eventos que el usuario ha organizado
+ *               example: 5
+ *             attended:
+ *               type: integer
+ *               description: Asistencias confirmadas del usuario (status='confirmed')
+ *               example: 12
+ *             reviews:
+ *               type: integer
+ *               description: Reseñas escritas por el usuario
+ *               example: 3
+ *           required: [organized, attended, reviews]
+ *       required: [user, counts]
+ *
+ *     Pagination:
+ *       type: object
+ *       description: Metadatos de paginación
+ *       properties:
+ *         page:
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
+ *         limit:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           example: 20
+ *         total:
+ *           type: integer
+ *           description: Total de elementos en toda la colección
+ *           example: 47
+ *         totalPages:
+ *           type: integer
+ *           example: 3
+ *         hasMore:
+ *           type: boolean
+ *           description: true si existe al menos una página adicional
+ *           example: true
+ *       required: [page, limit, total, totalPages, hasMore]
  *
  *     ApiError:
  *       type: object
