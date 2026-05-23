@@ -28,6 +28,7 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
 fun MainScreen(
     eventsViewModel: EventsViewModel,
     myEventsViewModel: MyEventsViewModel,
+    historyViewModel: HistoryViewModel,
     profileViewModel: com.eventos.comunitarios.ui.profile.ProfileViewModel,
     onEventClick: (String) -> Unit,
     onCreateEvent: () -> Unit,
@@ -88,9 +89,13 @@ fun MainScreen(
                     )
                 }
                 BottomNavItem.Historial -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Historial: Próximamente disponible")
-                    }
+                    val state by historyViewModel.state.collectAsState()
+                    LaunchedEffect(Unit) { historyViewModel.loadHistory() }
+
+                    HistoryScreen(
+                        state = state,
+                        onRefresh = { historyViewModel.loadHistory() }
+                    )
                 }
                 BottomNavItem.Perfil -> {
                     val state by profileViewModel.state.collectAsState()

@@ -13,7 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,7 +23,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.eventos.comunitarios.notifications.EventMessagingService
-import com.eventos.comunitarios.ui.auth.AuthState
 import com.eventos.comunitarios.ui.auth.AuthViewModel
 import com.eventos.comunitarios.ui.auth.LoginScreen
 import com.eventos.comunitarios.ui.auth.RegisterScreen
@@ -33,6 +32,7 @@ import com.eventos.comunitarios.ui.events.EventFormScreen
 import com.eventos.comunitarios.ui.events.EventFormState
 import com.eventos.comunitarios.ui.events.EventFormViewModel
 import com.eventos.comunitarios.ui.events.EventsViewModel
+import com.eventos.comunitarios.ui.events.HistoryViewModel
 import com.eventos.comunitarios.ui.events.MyEventsViewModel
 import com.eventos.comunitarios.ui.main.MainScreen
 import com.eventos.comunitarios.ui.onboarding.OnboardingScreen
@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val eventsViewModel: EventsViewModel by viewModels()
     private val myEventsViewModel: MyEventsViewModel by viewModels()
+    private val historyViewModel: HistoryViewModel by viewModels()
     private val detailViewModel: EventDetailViewModel by viewModels()
     private val formViewModel: EventFormViewModel by viewModels()
     private val profileViewModel: ProfileViewModel by viewModels()
@@ -160,7 +161,6 @@ class MainActivity : ComponentActivity() {
             .build()
 
         val googleSignInClient = GoogleSignIn.getClient(this, gso)
-
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
 
         enableEdgeToEdge()
@@ -177,6 +177,7 @@ class MainActivity : ComponentActivity() {
 
                     try {
                         val account = task.getResult(ApiException::class.java)
+
                         account.idToken?.let {
                             authViewModel.signInWithGoogle(it)
                         }
@@ -305,6 +306,7 @@ class MainActivity : ComponentActivity() {
                         MainScreen(
                             eventsViewModel = eventsViewModel,
                             myEventsViewModel = myEventsViewModel,
+                            historyViewModel = historyViewModel,
                             profileViewModel = profileViewModel,
                             onEventClick = { id ->
                                 detailViewModel.loadEvent(id)

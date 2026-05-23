@@ -62,27 +62,77 @@ class EventFormViewModel(
     }
 
     fun saveEvent() {
-        if (title.value.isBlank() || location.value.isBlank()) {
-            _state.value = EventFormState.Error("Título y ubicación son requeridos")
+        val tituloLimpio = title.value.trim()
+        val descripcionLimpia = description.value.trim()
+        val ubicacionLimpia = location.value.trim()
+        val fechaSeleccionada = date.value
+
+        if (tituloLimpio.isBlank()) {
+            _state.value = EventFormState.Error("El título del evento es obligatorio.")
+            return
+        }
+
+        if (tituloLimpio.length < 4) {
+            _state.value = EventFormState.Error("El título debe tener al menos 4 caracteres.")
+            return
+        }
+
+        if (ubicacionLimpia.isBlank()) {
+            _state.value = EventFormState.Error("La ubicación del evento es obligatoria.")
+            return
+        }
+
+        if (descripcionLimpia.isBlank()) {
+            _state.value = EventFormState.Error("La descripción del evento es obligatoria.")
+            return
+        }
+
+        if (descripcionLimpia.length < 10) {
+            _state.value = EventFormState.Error("La descripción debe tener al menos 10 caracteres.")
+            return
+        }
+
+        if (category.value.isBlank()) {
+            _state.value = EventFormState.Error("Debe seleccionar una categoría para el evento.")
+            return
+        }
+
+        if (fechaSeleccionada.isBefore(LocalDateTime.now())) {
+            _state.value = EventFormState.Error("La fecha y hora del evento no pueden ser anteriores al momento actual.")
             return
         }
 
         viewModelScope.launch {
             _state.value = EventFormState.Loading
-            // Convert current local date time to UTC for the server
-            val isoDate = date.value.atZone(ZoneId.systemDefault())
+
+            val isoDate = fechaSeleccionada.atZone(ZoneId.systemDefault())
                 .withZoneSameInstant(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_INSTANT)
-            
+
             val result = if (editingEventId.value == null) {
-                repository.createEvent(title.value, description.value, isoDate, location.value, category.value)
+                repository.createEvent(
+                    tituloLimpio,
+                    descripcionLimpia,
+                    isoDate,
+                    ubicacionLimpia,
+                    category.value
+                )
             } else {
-                repository.updateEvent(editingEventId.value!!, title.value, description.value, isoDate, location.value, category.value)
+                repository.updateEvent(
+                    editingEventId.value!!,
+                    tituloLimpio,
+                    descripcionLimpia,
+                    isoDate,
+                    ubicacionLimpia,
+                    category.value
+                )
             }
 
             when (result) {
                 is ApiResult.Success -> _state.value = EventFormState.Success
-                is ApiResult.Error -> _state.value = EventFormState.Error(result.message)
+                is ApiResult.Error -> _state.value = EventFormState.Error(
+                    result.message.ifBlank { "No se pudo guardar el evento. Intente nuevamente." }
+                )
             }
         }
     }
