@@ -78,9 +78,9 @@ dependencies {
     implementation(libs.moshi)
     implementation(libs.okhttp.logging)
 
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.messaging)
+    implementation(platform(libs.firebaseBom))
+    implementation(libs.firebaseAuth)
+    implementation(libs.firebaseMessaging)
 
     implementation(libs.play.services.auth)
     implementation(libs.facebook.login)
