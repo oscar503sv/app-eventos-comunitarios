@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eventos.comunitarios.data.model.EventCategory
+import com.eventos.comunitarios.ui.components.ShareBottomSheet
 import com.eventos.comunitarios.util.DateUtils
 import com.google.firebase.auth.FirebaseAuth
 import java.util.Locale
@@ -33,9 +34,11 @@ fun EventDetailScreen(
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
     onEdit: (com.eventos.comunitarios.data.model.EventDetail) -> Unit,
-    onToggleAttendance: (String) -> Unit
+    onToggleAttendance: (String) -> Unit,
+    onViewReviews: (String, String, Boolean) -> Unit, // eventId, title, canReview
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(state) {
         if (state is EventDetailState.Deleted) {
@@ -56,22 +59,30 @@ fun EventDetailScreen(
                     }
                 },
                 actions = {
-                    if (state is EventDetailState.Success && state.isOrganizer) {
-                        if (!state.isPast) {
-                            IconButton(onClick = { onEdit(state.event) }) {
+                    IconButton(onClick = { showShareSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Compartir"
+                        )
+                    }
+                    if (state is EventDetailState.Success) {
+                        if (state.isOrganizer) {
+                            if (!state.isPast) {
+                                IconButton(onClick = { onEdit(state.event) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Editar"
+                                    )
+                                }
+                            }
+
+                            IconButton(onClick = { showDeleteConfirm = true }) {
                                 Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Editar"
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Eliminar",
+                                    tint = Color.Red
                                 )
                             }
-                        }
-
-                        IconButton(onClick = { showDeleteConfirm = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar",
-                                tint = Color.Red
-                            )
                         }
                     }
                 }
@@ -113,17 +124,23 @@ fun EventDetailScreen(
             } else if (state is EventDetailState.Success && state.isPast) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 8.dp,
                     color = Color.White
                 ) {
-                    Text(
-                        text = "Este evento ya ha finalizado",
+                    Button(
+                        onClick = { onViewReviews(state.event.id, state.event.title, state.isUserAttending) },
                         modifier = Modifier
                             .padding(16.dp)
-                            .fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium
-                    )
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(28.dp)
+                    ) {
+                        Text(
+                            text = "Ver reseñas",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -348,6 +365,32 @@ fun EventDetailScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
                         }
+                    }
+
+                    if (showShareSheet) {
+                        val event = state.event
+                        // Convert EventDetail to EventSummary for ShareBottomSheet
+                        val eventSummary = com.eventos.comunitarios.data.model.EventSummary(
+                            id = event.id,
+                            title = event.title,
+                            description = event.description,
+                            date = event.date,
+                            location = event.location,
+                            organizerId = event.organizerId,
+                            createdAt = event.createdAt,
+                            updatedAt = event.updatedAt,
+                            organizer = event.organizer,
+                            count = com.eventos.comunitarios.data.model.EventCounts(
+                                attendances = confirmedAttendees.size,
+                                reviews = event.reviews.size
+                            ),
+                            category = event.category
+                        )
+                        
+                        ShareBottomSheet(
+                            event = eventSummary,
+                            onDismiss = { showShareSheet = false }
+                        )
                     }
 
                     if (showDeleteConfirm) {

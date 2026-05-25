@@ -72,6 +72,14 @@ class EventsRepository(
         api.updateProfile(UpdateProfileRequest(displayName)).profile
     }
 
+    suspend fun getReviews(eventId: String): ApiResult<ReviewsResponse> = safeCall {
+        api.getReviews(eventId)
+    }
+
+    suspend fun createReview(eventId: String, rating: Int, comment: String?): ApiResult<Review> = safeCall {
+        api.createReview(eventId, CreateReviewRequest(rating, comment)).review
+    }
+
     private suspend fun <T> safeCall(block: suspend () -> T): ApiResult<T> = try {
         ApiResult.Success(block())
     } catch (e: HttpException) {

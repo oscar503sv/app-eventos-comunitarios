@@ -170,7 +170,9 @@ fun EventFormScreen(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                        // El DatePicker de Material3 devuelve los milisegundos en UTC (00:00 del día seleccionado).
+                        // Para evitar el desfase por zona horaria (offset), convertimos usando UTC.
+                        val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate()
                         onDateChange(LocalDateTime.of(selectedDate, date.toLocalTime()))
                     }
                     showDatePicker = false
