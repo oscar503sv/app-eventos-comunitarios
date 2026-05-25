@@ -19,9 +19,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.eventos.comunitarios.notifications.EventMessagingService
 import com.eventos.comunitarios.ui.auth.AuthViewModel
 import com.eventos.comunitarios.ui.auth.LoginScreen
@@ -34,6 +36,8 @@ import com.eventos.comunitarios.ui.events.EventFormViewModel
 import com.eventos.comunitarios.ui.events.EventsViewModel
 import com.eventos.comunitarios.ui.events.HistoryViewModel
 import com.eventos.comunitarios.ui.events.MyEventsViewModel
+import com.eventos.comunitarios.ui.events.ReviewsScreen
+import com.eventos.comunitarios.ui.events.ReviewsViewModel
 import com.eventos.comunitarios.ui.main.MainScreen
 import com.eventos.comunitarios.ui.onboarding.OnboardingScreen
 import com.eventos.comunitarios.ui.profile.ProfileViewModel
@@ -72,6 +76,7 @@ class MainActivity : ComponentActivity() {
     private val detailViewModel: EventDetailViewModel by viewModels()
     private val formViewModel: EventFormViewModel by viewModels()
     private val profileViewModel: ProfileViewModel by viewModels()
+    private val reviewsViewModel: ReviewsViewModel by viewModels()
 
     private fun askNotificationPermission() {
         if (
@@ -347,7 +352,42 @@ class MainActivity : ComponentActivity() {
                             },
                             onToggleAttendance = { id ->
                                 detailViewModel.toggleAttendance(id)
+                            },
+                            onViewReviews = { id, title, canReview ->
+                                navController.navigate("reviews/$id/$title/$canReview")
                             }
+                        )
+                    }
+
+                    composable(
+                        route = "reviews/{eventId}/{eventName}/{canReview}",
+                        arguments = listOf(
+                            navArgument("eventId") { type = NavType.StringType },
+                            navArgument("eventName") { type = NavType.StringType },
+                            navArgument("canReview") { type = NavType.BoolType }
+                        )
+                    ) { backStackEntry ->
+                        val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+                        val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
+                        val canReview = backStackEntry.arguments?.getBoolean("canReview") ?: false
+
+                        val reviewsState by reviewsViewModel.state.collectAsState()
+                        val isSubmitting by reviewsViewModel.isSubmitting.collectAsState()
+
+                        LaunchedEffect(eventId) {
+                            reviewsViewModel.loadReviews(eventId)
+                        }
+
+                        ReviewsScreen(
+                            state = reviewsState,
+                            isSubmitting = isSubmitting,
+                            eventName = eventName,
+                            canReview = canReview,
+                            onBack = { navController.popBackStack() },
+                            onSubmitReview = { rating, comment ->
+                                reviewsViewModel.submitReview(eventId, rating, comment)
+                            },
+                            onRefresh = { reviewsViewModel.loadReviews(eventId) }
                         )
                     }
 

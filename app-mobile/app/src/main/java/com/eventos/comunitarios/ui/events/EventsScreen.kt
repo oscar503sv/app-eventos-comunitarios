@@ -83,11 +83,6 @@ fun EventsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { 
-                        Toast.makeText(context, "Notificaciones: Próximamente", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
-                    }
                     Box(
                         modifier = Modifier
                             .padding(end = 12.dp, start = 8.dp)

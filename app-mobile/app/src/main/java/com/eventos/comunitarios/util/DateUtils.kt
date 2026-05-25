@@ -56,4 +56,22 @@ object DateUtils {
             ""
         }
     }
+
+    fun getTimeAgo(isoDate: String): String {
+        return try {
+            val instant = Instant.parse(isoDate)
+            val now = Instant.now()
+            val seconds = now.epochSecond - instant.epochSecond
+            
+            when {
+                seconds < 60 -> "Justo ahora"
+                seconds < 3600 -> "Hace ${seconds / 60} minutos"
+                seconds < 86400 -> "Hace ${seconds / 3600} horas"
+                seconds < 2592000 -> "Hace ${seconds / 86400} días"
+                else -> "Hace mucho tiempo"
+            }
+        } catch (e: Exception) {
+            ""
+        }
+    }
 }

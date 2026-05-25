@@ -40,6 +40,16 @@ interface EventsApi {
 
     @PUT("api/users/profile")
     suspend fun updateProfile(@Body body: UpdateProfileRequest): ProfileResponse
+
+    // --- Reseñas ---
+    @GET("api/reviews/{eventId}")
+    suspend fun getReviews(@Path("eventId") eventId: String): ReviewsResponse
+
+    @POST("api/reviews/{eventId}")
+    suspend fun createReview(
+        @Path("eventId") eventId: String,
+        @Body body: CreateReviewRequest
+    ): ReviewResponse
 }
 
 @JsonClass(generateAdapter = true)

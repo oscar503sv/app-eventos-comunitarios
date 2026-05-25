@@ -173,6 +173,41 @@ data class UpdateEventRequest(
 )
 
 @JsonClass(generateAdapter = true)
+data class Review(
+    val id: String,
+    val userId: String,
+    val eventId: String,
+    val rating: Int,
+    val comment: String?,
+    val createdAt: String
+)
+
+@JsonClass(generateAdapter = true)
+data class ReviewStats(
+    val average: Double,
+    val count: Int
+)
+
+@JsonClass(generateAdapter = true)
+data class ReviewsResponse(
+    val success: Boolean,
+    val reviews: List<ReviewWithUser>,
+    val stats: ReviewStats
+)
+
+@JsonClass(generateAdapter = true)
+data class ReviewResponse(
+    val success: Boolean,
+    val review: Review
+)
+
+@JsonClass(generateAdapter = true)
+data class CreateReviewRequest(
+    val rating: Int,
+    val comment: String?
+)
+
+@JsonClass(generateAdapter = true)
 data class SuccessResponse(
     val success: Boolean,
     val message: String
